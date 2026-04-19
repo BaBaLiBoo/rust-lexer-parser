@@ -1,162 +1,59 @@
-import time
-import sys
-import os
-import multiprocessing
-import threading
-from time import sleep
-import logging
+from __future__ import annotations
+
+import argparse
 import json
+from pathlib import Path
 
-from PyQt5.QtWidgets import QApplication
-from PyQt5.QtWebEngineWidgets import QWebEngineView
-from PyQt5.QtCore import QUrl, QObject, pyqtSlot, pyqtSignal, QThread
-from PyQt5.QtWebChannel import QWebChannel
-
-from aiohttp import web
-
-from myParser import Parser
 from myLexer import Lexer
-
-serverPort = 9099
-serverDirectory = "dist/frontend"
+from myParser import ParseError, Parser
 
 
-class ParserLauncher(QObject):
-    returnParser = pyqtSignal(Parser)
-    finished = pyqtSignal()
+def run_lex(source: str):
+    lexer = Lexer()
+    tokens, errors = lexer.tokenize(source)
+    if errors:
+        for err in errors:
+            print(f"LEX ERROR: {err.message} at line {err.line}, col {err.col}")
+        return 1
 
-    def run(self):
-        self.returnParser.emit(Parser())
-        self.finished.emit()
-
-
-class Compiler(QObject):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.lexer = Lexer()
-        self.parser = None
-        self.parser_init_begin = time.time()
-        self.getParserNonBlock()
-
-    def getParserNonBlock(self):
-        self.pl_thread = QThread()
-        self.pl_worker = ParserLauncher()
-        self.pl_worker.moveToThread(self.pl_thread)
-        self.pl_thread.started.connect(self.pl_worker.run)
-        self.pl_worker.returnParser.connect(self.setParser)
-        self.pl_worker.finished.connect(self.pl_thread.quit)
-        self.pl_thread.finished.connect(self.pl_thread.deleteLater)
-        self.pl_thread.start()
-
-    @pyqtSlot(Parser)
-    def setParser(self, parser):
-        self.parser = parser
-        delta = time.time() - self.parser_init_begin
-        print(f"self.parser is set to {self.parser}")
-        print(f"Parser took {delta} seconds to initialize")
-        self.goto_table = self.parser.get_goto_table()
-        self.action_table = self.parser.get_action_table()
-        self.parent().page().runJavaScript("window.cpf.flush();")
-
-    @pyqtSlot(str, result=str)
-    def process(self, code_str):
-        token_list, lexer_success = self.getLex(code_str)
-        parse_result = self.getParse(token_list)
-        return json.dumps(
-            {
-                "lexer": self.dumpTokenList(token_list),
-                "lexer_success": lexer_success,
-                **parse_result,
-            }
-        )
-
-    def dumpTokenList(self, token_list):
-        def dumpToken(r):
-            r["prop"] = r["prop"].value
-            return r
-
-        return list(map(dumpToken, token_list))
-
-    def getParse(self, token_list):
-        if self.parser is not None:
-            parsed_result = self.parser.getParse(token_list)
-            return {
-                "ast": parsed_result,
-                "goto": self.goto_table,
-                "action": self.action_table,
-                "process": self.parser.parse_process_display,
-            }
-        else:
-            launching = "Parser 正在启动，请稍等。"
-            return {
-                "ast": {
-                    "root": launching,
-                    "err": "parser_not_ready",
-                },
-                "goto": [[launching]],
-                "action": [[launching]],
-                "process": [[launching]],
-            }
-
-    def getLex(self, code_str: str):
-        return self.lexer.getLex(code_str.splitlines())
+    for tk in tokens:
+        print(f"{tk.line}:{tk.col}\t{tk.kind.value}\t{tk.lexeme!r}")
+    return 0
 
 
-class MainWindow(QWebEngineView):
-    def __init__(self):
-        super(MainWindow, self).__init__()
-        self.load(QUrl(f"http://localhost:{serverPort}/index.html"))
-        self.setWindowTitle("类C词法&文法分析器") 
-        self.webChannel = QWebChannel(self.page())
-        self.webChannel.registerObject("compiler", Compiler(self))
-        self.page().setWebChannel(self.webChannel)
+def run_parse(source: str, print_ast: bool):
+    lexer = Lexer()
+    tokens, errors = lexer.tokenize(source)
+    if errors:
+        for err in errors:
+            print(f"LEX ERROR: {err.message} at line {err.line}, col {err.col}")
+        return 1
+
+    parser = Parser()
+    try:
+        ast = parser.parse(tokens)
+    except ParseError as e:
+        print(f"PARSE ERROR: {e}")
+        return 1
+
+    print("Parse succeeded.")
+    if print_ast:
+        print(json.dumps(ast, ensure_ascii=False, indent=2))
+    return 0
 
 
-def ServerProcess(application_path):
-    # serving local files
-    app = web.Application()
-    app.add_routes(
-        [
-            web.static(
-                "/",
-                os.path.join(application_path, serverDirectory),
-                show_index=True,
-                follow_symlinks=False,
-                append_version=True,
-            )
-        ]
-    )
-    web.run_app(app, host="localhost", port=serverPort)
+def main():
+    argp = argparse.ArgumentParser(description="Rust-like lexer + parser")
+    argp.add_argument("file", type=Path, help="source file path")
+    argp.add_argument("--mode", choices=["lex", "parse"], default="parse")
+    argp.add_argument("--ast", action="store_true", help="print AST in parse mode")
+    args = argp.parse_args()
 
-
-def QtProcess():
-    app = QApplication(sys.argv)
-    window = MainWindow()
-    window.showMaximized()
-    app.exec_()
+    source = args.file.read_text(encoding="utf-8")
+    if args.mode == "lex":
+        raise SystemExit(run_lex(source))
+    raise SystemExit(run_parse(source, args.ast))
 
 
 if __name__ == "__main__":
-    if getattr(sys, 'frozen', False):
-        # If the application is run as a bundle, the PyInstaller bootloader
-        # extends the sys module by a flag frozen=True and sets the app 
-        # path into variable _MEIPASS'.
-        application_path = sys._MEIPASS
-    else:
-        application_path = os.path.dirname(os.path.abspath(__file__))
-    multiprocessing.freeze_support()
-    serverProcess = multiprocessing.Process(None, ServerProcess, args=(application_path,), name="server")
-    windowProcess = multiprocessing.Process(None, QtProcess, name="window")
-    serverProcess.start()
-    print("started serverProcess")
-    windowProcess.start()
-    print("started windowProcess")
-    while windowProcess.is_alive() and serverProcess.is_alive():
-        try:
-            sleep(1)
-        except KeyboardInterrupt:
-            break
-    serverProcess.terminate()
-    print("killed serverProcess")
-    windowProcess.terminate()
-    print("killed windowProcess")
+    main()

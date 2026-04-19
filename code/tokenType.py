@@ -1,101 +1,115 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
 from enum import Enum
 
 
-class tokenType(Enum):
-    UNKNOWN = "unknown"
-    S_COMMENT = "s_comment"
-    LM_COMMENT = "lm_comment"
-    RM_COMMENT = "rm_comment"
+class TokenKind(Enum):
+    # literals / identifiers
     IDENTIFIER = "identifier"
-    INTEGER_CONSTANT = "integer_constant"
-    FLOATING_POINT_CONSTANT = "floating_point_constant"
-    EOF = "eof"
-    L_PAREN = "l_paren"
-    R_PAREN = "r_paren"
-    L_BRACE = "l_brace"
-    R_BRACE = "r_brace"
-    STAR = "star"
-    STAR_EQUAL = "starequal"
-    PLUS = "plus"
-    PLUS_EQUAL = "plusequal"
-    MINUS = "minus"
-    MINUS_EQUAL = "minusequal"
-    PERCENT = "percent"
-    PERCENT_EQUAL = "percentequal"
-    EXCLAMATION_EQUAL = "exclaimequal"
-    SLASH = "lash"
-    SLASH_EQUAL = "slashequal"
-    LESS = "less"
-    LESS_EQUAL = "lessequal"
-    LESS_LESS = "lessless"
-    LESS_LESS_EQUAL = "lesslessequal"
-    GREATER = "greater"
-    GREATER_GREATER = "greatergreater"
-    GREATER_EQUAL = "greaterequal"
-    SEMI = "semi"
-    EQUAL = "equal"
-    EQUAL_EQUAL = "equalequal"
-    COMMA = "comma"
-    KW_ELSE = "kw_else"
-    KW_IF = "kw_if"
-    KW_INT = "kw_int"
-    KW_FLOAT = "kw_float"
-    KW_RETURN = "kw_return"
-    KW_VOID = "kw_void"
-    KW_WHILE = "kw_while"
+    INTEGER = "integer"
+
+    # keywords
+    KW_I32 = "i32"
+    KW_LET = "let"
+    KW_IF = "if"
+    KW_ELSE = "else"
+    KW_WHILE = "while"
+    KW_RETURN = "return"
+    KW_MUT = "mut"
+    KW_FN = "fn"
+    KW_FOR = "for"
+    KW_IN = "in"
+    KW_LOOP = "loop"
+    KW_BREAK = "break"
+    KW_CONTINUE = "continue"
+
+    # operators and punctuation
+    ASSIGN = "="
+    PLUS = "+"
+    MINUS = "-"
+    STAR = "*"
+    SLASH = "/"
+    EQ = "=="
+    GT = ">"
+    GE = ">="
+    LT = "<"
+    LE = "<="
+    NE = "!="
+    AMP = "&"
+
+    LPAREN = "("
+    RPAREN = ")"
+    LBRACE = "{"
+    RBRACE = "}"
+    LBRACKET = "["
+    RBRACKET = "]"
+
+    SEMI = ";"
+    COLON = ":"
+    COMMA = ","
+
+    ARROW = "->"
+    DOT = "."
+    DOT_DOT = ".."
+    HASH = "#"
+
+    EOF = "<eof>"
 
 
-tokenSymbols = {
-    "=": tokenType.EQUAL,
-    "+": tokenType.PLUS,
-    "+=": tokenType.PLUS_EQUAL,
-    "-": tokenType.MINUS,
-    "-=": tokenType.MINUS_EQUAL,
-    "*": tokenType.STAR,
-    "*=": tokenType.STAR_EQUAL,
-    "/": tokenType.SLASH,
-    "/=": tokenType.SLASH_EQUAL,
-    "%": tokenType.PERCENT,
-    "%=": tokenType.PERCENT_EQUAL,
-    "==": tokenType.EQUAL_EQUAL,
-    ">": tokenType.GREATER,
-    ">>": tokenType.GREATER_GREATER,
-    ">>=": tokenType.GREATER_EQUAL,
-    ">=": tokenType.GREATER_EQUAL,
-    "<": tokenType.LESS,
-    "<<": tokenType.LESS_LESS,
-    "<<=": tokenType.LESS_LESS_EQUAL,
-    "<=": tokenType.LESS_EQUAL,
-    "!=": tokenType.EXCLAMATION_EQUAL,
-    ";": tokenType.SEMI,
-    ",": tokenType.COMMA,
-    "#": tokenType.EOF,
-    "(": tokenType.L_PAREN,
-    ")": tokenType.R_PAREN,
-    "{": tokenType.L_BRACE,
-    "}": tokenType.R_BRACE,
-    "//": tokenType.S_COMMENT,
-    "/*": tokenType.LM_COMMENT,
-    "*/": tokenType.RM_COMMENT,
-}
-
-tokenKeywords = {
-    "int": tokenType.KW_INT,
-    "float": tokenType.KW_FLOAT,
-    "void": tokenType.KW_VOID,
-    "if": tokenType.KW_IF,
-    "else": tokenType.KW_ELSE,
-    "return": tokenType.KW_RETURN,
-    "while": tokenType.KW_WHILE,
+KEYWORDS = {
+    "i32": TokenKind.KW_I32,
+    "let": TokenKind.KW_LET,
+    "if": TokenKind.KW_IF,
+    "else": TokenKind.KW_ELSE,
+    "while": TokenKind.KW_WHILE,
+    "return": TokenKind.KW_RETURN,
+    "mut": TokenKind.KW_MUT,
+    "fn": TokenKind.KW_FN,
+    "for": TokenKind.KW_FOR,
+    "in": TokenKind.KW_IN,
+    "loop": TokenKind.KW_LOOP,
+    "break": TokenKind.KW_BREAK,
+    "continue": TokenKind.KW_CONTINUE,
 }
 
 
-def tokenType_to_terminal(tokenType: tokenType) -> str:
-    for key, value in tokenKeywords.items():
-        if value == tokenType:
-            return key
-    for key, value in tokenSymbols.items():
-        if value == tokenType:
-            return key
-    # 如identifier、numeric_constant并非固定的terminal，直接返回对应的字符串名
-    return tokenType.value
+MULTI_CHAR_SYMBOLS = {
+    "==": TokenKind.EQ,
+    ">=": TokenKind.GE,
+    "<=": TokenKind.LE,
+    "!=": TokenKind.NE,
+    "->": TokenKind.ARROW,
+    "..": TokenKind.DOT_DOT,
+}
+
+
+SINGLE_CHAR_SYMBOLS = {
+    "=": TokenKind.ASSIGN,
+    "+": TokenKind.PLUS,
+    "-": TokenKind.MINUS,
+    "*": TokenKind.STAR,
+    "/": TokenKind.SLASH,
+    ">": TokenKind.GT,
+    "<": TokenKind.LT,
+    "&": TokenKind.AMP,
+    "(": TokenKind.LPAREN,
+    ")": TokenKind.RPAREN,
+    "{": TokenKind.LBRACE,
+    "}": TokenKind.RBRACE,
+    "[": TokenKind.LBRACKET,
+    "]": TokenKind.RBRACKET,
+    ";": TokenKind.SEMI,
+    ":": TokenKind.COLON,
+    ",": TokenKind.COMMA,
+    ".": TokenKind.DOT,
+    "#": TokenKind.HASH,
+}
+
+
+@dataclass(frozen=True)
+class Token:
+    kind: TokenKind
+    lexeme: str
+    line: int
+    col: int
