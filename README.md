@@ -81,7 +81,7 @@
 - `IntLiteral`：整数字面量表达式。
 
 ## 6. 演示样例文件说明
-演示样例位于 `code/examples/`：
+演示样例位于 `examples/`：
 - `minimum_demo.rsx`：最低要求覆盖样例（函数、参数、`return`、`let mut`、赋值、调用、`if`、`while`）。
 - `control_flow_demo.rsx`：控制流扩展示例（`if / else if / else`、`while / loop / for`、`break / continue`）。
 - `advanced_expr_demo.rsx`：高级表达式示例（`&expr`、`*expr`、数组/索引、元组、分组与元组区分）。
@@ -89,48 +89,78 @@
 ## 7. 运行方式（仓库根目录）
 ### 7.1 运行词法分析
 ```bash
-python code/main.py --mode lex code/examples/minimum_demo.rsx
+python main.py --mode lex examples/minimum_demo.rsx
 ```
 
 ### 7.2 运行语法分析
 ```bash
-python code/main.py --mode parse code/examples/minimum_demo.rsx
+python main.py --mode parse examples/minimum_demo.rsx
 ```
 
 ### 7.3 打印 AST
 ```bash
-python code/main.py --mode parse --ast code/examples/control_flow_demo.rsx
+python main.py --mode parse --ast examples/control_flow_demo.rsx
 ```
 
 ### 7.4 执行测试
 ```bash
-python -m unittest discover -s code/tests -p 'test_*.py'
+python -m unittest discover -s tests -p "test_*.py"
 ```
 
 ### 7.5 运行新增 demo 文件示例
 ```bash
-python code/main.py --mode parse code/examples/minimum_demo.rsx
-python code/main.py --mode parse --ast code/examples/control_flow_demo.rsx
-python code/main.py --mode parse code/examples/advanced_expr_demo.rsx
+python main.py --mode parse examples/minimum_demo.rsx
+python main.py --mode parse --ast examples/control_flow_demo.rsx
+python main.py --mode parse examples/advanced_expr_demo.rsx
 ```
 
-## 8. 测试说明
+
+## 8. 图形界面使用说明（tkinter）
+为便于课程答辩演示，项目新增了一个轻量本地 GUI：`gui.py`。该界面基于 Python 标准库 `tkinter`，无需额外安装大型依赖。
+
+### 8.1 启动方式
+```bash
+python gui.py
+```
+
+### 8.2 界面功能
+- 源码输入区：可直接粘贴/编辑源码；
+- 快速加载 Demo：
+  - `minimum_demo`
+  - `control_flow_demo`
+  - `advanced_expr_demo`
+- 操作按钮：
+  - 词法分析
+  - 语法分析
+  - 语法分析并显示 AST
+  - 清空
+- 输出区：展示 token 列表、`Parse succeeded.`、AST JSON 或错误信息；
+- 状态栏：展示当前模式和执行成功/失败状态。
+
+### 8.3 GUI 演示建议流程
+1. 点击“加载 minimum_demo”，再点“词法分析”，查看 token（行列号、类型、词素）。
+2. 点击“语法分析”，确认输出 `Parse succeeded.`。
+3. 点击“语法分析并显示 AST”，查看 JSON 格式 AST。
+4. 切换加载 `control_flow_demo`、`advanced_expr_demo` 重复上述步骤。
+5. 人为输入非法代码（如缺失分号），点击语法分析，查看错误行列定位。
+
+## 9. 测试说明
 - 测试覆盖词法关键点：关键字/标识符区分、多字符运算符、注释处理、`mut` 与 `i32` 识别等。
 - 测试覆盖语法关键点：最低强制规则、控制流扩展、表达式优先级、高级表达式、多种非法输入报错。
 - 当前测试命令：
   ```bash
-  python -m unittest discover -s code/tests -p 'test_*.py'
+  python -m unittest discover -s tests -p "test_*.py"
   ```
 - 当前状态：全部测试通过（以本次最终验证结果为准）。
 
-## 9. 已知限制
+## 10. 已知限制
 - 单元素元组 `(expr,)` 暂不支持。
 - 元组末尾逗号 `(1,2,)` 暂不支持。
 - 类型系统当前仅支持 `i32`。
 - `for` 当前仅支持 `start..end` 这种区间形式。
 - 赋值语句左值当前仅支持标识符，不支持更复杂左值。
 
-## 10. 作业要求符合性说明
+## 11. 作业要求符合性说明
 下表给出最低强制规则的实现对照（规则编号与测试样例命名保持一致）：
 
 | 规则编号 | 规则说明（中文） | 语义映射（实现方式） | 关键代码位置 | 对应测试样例 |
@@ -152,7 +182,7 @@ python code/main.py --mode parse code/examples/advanced_expr_demo.rsx
 | 5.0 | 函数返回表达式 | `return a+b;` | `parse_statement` + 表达式链 | `program_5_0` |
 | 5.1 | `while` 循环 | `while cond { ... }` | `parse_statement`（`while` 分支） | `program_5_1` |
 
-## 11. 最终提交检查清单
+## 12. 最终提交检查清单
 - [x] 源代码已准备
 - [x] README 已准备
 - [x] 测试命令可运行
@@ -160,7 +190,7 @@ python code/main.py --mode parse code/examples/advanced_expr_demo.rsx
 - [x] AST 演示可运行
 - [x] 已知限制已说明
 
-## 12. 报告写作辅助
+## 13. 报告写作辅助
 - **词法分析实现思路**：按字符扫描，跳过空白与注释，按最长匹配识别多字符运算符，输出带位置信息的 token 序列。
 - **语法分析实现思路**：使用递归下降解析器，按“程序—函数—语句—表达式”分层，实现明确的 `expect/match` 错误检查。
 - **表达式优先级设计**：通过多层函数（比较→加减→乘除→一元→后缀→基础）保证优先级与结合顺序正确。
