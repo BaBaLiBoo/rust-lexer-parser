@@ -1,8 +1,12 @@
+fn add_one(mut v:i32) -> i32 {
+  return v + 1;
+}
+
 fn minimum_demo(mut a:i32) -> i32 {
   ;
   let mut x:i32 = 1;
   let mut y;
-  y = x + 2 * 3;
+  y = add_one(x);
   if a > 0 {
     return y;
   }
