@@ -99,27 +99,29 @@ PARSE ERROR: Expected expression at line 1, col 18
 
 ## 6. 作业要求符合性对照表（最低强制）
 
-| 规则编号 | 是否支持 | 对应代码文件 | 对应测试名 |
+> 仅列最低强制规则：`0.1 0.2 0.3 1.1 1.2 1.3 1.4 1.5 2.0 2.1 2.2 3.1 3.2 3.3 3.4 3.5 4.1 5.0 5.1`。
+
+| 规则编号 | 是否支持 | 实际支持代码位置 | 实际测试用例 |
 |---|---|---|---|
-| 0.1 | ✅ | `code/myLexer.py` | `LexerTests.test_if123_identifier` |
-| 0.2 | ✅ | `code/myLexer.py` | `LexerTests.test_if_equal_number` |
-| 0.3 | ✅ | `code/myLexer.py` | `LexerTests.test_multi_char_ops` |
-| 1.1 | ✅ | `code/myParser.py` | `ParserTests.test_required_programs` (`program_1_1`) |
-| 1.2 | ✅ | `code/myParser.py` | `ParserTests.test_required_programs` (`program_1_2`) |
-| 1.3 | ✅ | `code/myParser.py` | `ParserTests.test_required_programs` (`program_1_3`) |
-| 1.4 | ✅ | `code/myParser.py` | `ParserTests.test_required_programs` (`program_1_4`) |
-| 1.5 | ✅ | `code/myParser.py` | `ParserTests.test_required_programs` (`program_1_5`) |
-| 2.0 | ✅ | `code/myParser.py` | `ParserTests.test_required_programs` (`program_2_0`) |
-| 2.1 | ✅ | `code/myParser.py` | `ParserTests.test_required_programs` (`program_2_1`) |
-| 2.2 | ✅ | `code/myParser.py` | `ParserTests.test_required_programs` (`program_2_2`) |
-| 3.1 | ✅ | `code/myParser.py` | `ParserTests.test_required_programs` (`program_3_1__1`, `program_3_1__2`) |
-| 3.2 | ✅ | `code/myParser.py` | `ParserTests.test_comparison_operators_parse_success` |
-| 3.3 | ✅ | `code/myParser.py` | `ParserTests.test_required_programs` (`program_3_3`) |
-| 3.4 | ✅ | `code/myParser.py` | `ParserTests.test_required_programs` (`program_3_4`) |
-| 3.5 | ✅ | `code/myParser.py` | `ParserTests.test_required_programs` (`program_3_5__1`, `program_3_5__2`) |
-| 4.1 | ✅ | `code/myParser.py` | `ParserTests.test_required_programs` (`program_4_1`) |
-| 5.0 | ✅ | `code/myParser.py` | `ParserTests.test_required_programs` (`program_5_0`) |
-| 5.1 | ✅ | `code/myParser.py` | `ParserTests.test_required_programs` (`program_5_1`) |
+| 0.1（变量属性 / `mut`） | ✅ | `code/myLexer.py`（`KEYWORDS` 分流）、`code/myParser.py::parse_param`、`code/myParser.py::parse_var_decl` | `LexerTests.test_mut_and_i32_keywords`，`ParserTests.test_required_programs` (`program_1_4`, `program_2_0`, `program_2_1`) |
+| 0.2（类型 `i32`） | ✅ | `code/myLexer.py`（`KEYWORDS` 分流）、`code/myParser.py::parse_type` | `LexerTests.test_mut_and_i32_keywords`，`ParserTests.test_required_programs` (`program_1_4`, `program_1_5`, `program_2_0`) |
+| 0.3（左值 / 标识符） | ✅ | `code/myLexer.py`（标识符扫描）、`code/myParser.py::parse_primary`、`code/myParser.py::parse_statement`（赋值分支） | `ParserTests.test_identifier_as_lvalue_assignment`，`ParserTests.test_required_programs` (`program_2_2`, `program_3_1__2`) |
+| 1.1 | ✅ | `code/myParser.py::parse_program`、`parse_function` | `ParserTests.test_required_programs` (`program_1_1`) |
+| 1.2 | ✅ | `code/myParser.py::parse_block`、`parse_statement`（空语句） | `ParserTests.test_required_programs` (`program_1_2`) |
+| 1.3 | ✅ | `code/myParser.py::parse_statement`（`return` 分支） | `ParserTests.test_required_programs` (`program_1_3`) |
+| 1.4 | ✅ | `code/myParser.py::parse_param` | `ParserTests.test_required_programs` (`program_1_4`) |
+| 1.5 | ✅ | `code/myParser.py::parse_function`（`->` 返回类型） | `ParserTests.test_required_programs` (`program_1_5`) |
+| 2.0 | ✅ | `code/myParser.py::parse_var_decl`（`let mut ... :i32 = expr`） | `ParserTests.test_required_programs` (`program_2_0`) |
+| 2.1 | ✅ | `code/myParser.py::parse_var_decl`（可选类型与初始化） | `ParserTests.test_required_programs` (`program_2_1`) |
+| 2.2 | ✅ | `code/myParser.py::parse_statement`（`ID = expr;`） | `ParserTests.test_required_programs` (`program_2_2`)、`ParserTests.test_identifier_as_lvalue_assignment` |
+| 3.1 | ✅ | `code/myParser.py::parse_primary`（整数、标识符、括号） | `ParserTests.test_required_programs` (`program_3_1__1`, `program_3_1__2`) |
+| 3.2 | ✅ | `code/myParser.py::parse_comparison` | `ParserTests.test_comparison_operators_parse_success` |
+| 3.3 | ✅ | `code/myParser.py::parse_additive` | `ParserTests.test_required_programs` (`program_3_3`) |
+| 3.4 | ✅ | `code/myParser.py::parse_multiplicative` | `ParserTests.test_required_programs` (`program_3_4`) |
+| 3.5 | ✅ | `code/myParser.py::parse_primary`（函数调用） | `ParserTests.test_required_programs` (`program_3_5__1`, `program_3_5__2`)、`ParserTests.test_precedence` |
+| 4.1 | ✅ | `code/myParser.py::parse_statement`、`parse_statement_after_if`（`if/else if/else`） | `ParserTests.test_required_programs` (`program_4_1`) |
+| 5.0（循环语句类别） | ✅ | `code/myParser.py::parse_statement`（`while` 分支，循环语句） | `ParserTests.test_loop_statement_while` |
+| 5.1 | ✅ | `code/myParser.py::parse_statement`（`while`）+ `parse_statement`（循环体内赋值） | `ParserTests.test_required_programs` (`program_5_1`) |
 
 ## 7. 额外覆盖（验收补强）
 
@@ -127,3 +129,14 @@ PARSE ERROR: Expected expression at line 1, col 18
 - 比较运算全覆盖：`< <= > >= == !=`。
 - 优先级与调用覆盖：`1+2*3`、`(1+2)*3`、`a+b<c`、`foo(1,2+3)`。
 - 负向用例覆盖：缺右括号、缺分号、非法 token、表达式不完整、`if/while` 后缺语句块、`return` 后语法错误。
+
+## 8. 验收结论（submission-ready）
+
+- **最低规则满足情况**：第 6 节列出的最低强制规则（`0.1`~`5.1` 指定集合）均已覆盖并有对应代码/测试定位。
+- **额外支持**：注释词法、比较运算全覆盖、表达式优先级、函数调用、多类负向错误用例。
+- **从仓库根目录执行命令**：
+  - 词法分析：`python code/main.py --mode lex code/sample.rsx`
+  - 语法分析：`python code/main.py --mode parse code/sample.rsx`
+  - AST 输出：`python code/main.py --mode parse --ast code/sample.rsx`
+  - 测试执行：`python -m unittest discover -s code/tests -p 'test_*.py'`
+- **测试执行状态**：已执行以上测试命令，当前全部通过。
