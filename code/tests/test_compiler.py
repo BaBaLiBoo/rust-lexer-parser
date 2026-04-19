@@ -214,6 +214,17 @@ class ParserTests(unittest.TestCase):
         self.assertEqual(stmts[2]["expr"]["type"], "TupleLiteral")
         self.assertEqual(stmts[3]["expr"]["type"], "TupleLiteral")
 
+
+    def test_missing_closing_bracket_in_array_literal(self):
+        self.parse_fail("fn a(){ [1,2; }")
+
+    def test_malformed_indexing_expr(self):
+        self.parse_fail("fn a(){ arr[]; }")
+
+    def test_malformed_tuple_expr(self):
+        self.parse_fail("fn a(){ (1,,2); }")
+        self.parse_fail("fn a(){ (,1); }")
+
     def test_invalid_cases(self):
         self.parse_fail("fn a( { }")  # missing right parenthesis
         self.parse_fail("fn a(){ return 1 }")  # missing semicolon
@@ -232,8 +243,6 @@ class ParserTests(unittest.TestCase):
         self.parse_fail("fn a(){ loop ; }")  # loop without block
         self.parse_fail("fn a(){ break }")  # break without semicolon
         self.parse_fail("fn a(){ continue }")  # continue without semicolon
-        self.parse_fail("fn a(){ [1,2; }")  # missing ]
-        self.parse_fail("fn a(){ arr[]; }")  # malformed indexing
         self.parse_fail("fn a(){ (1,); }")  # single-element tuple unsupported
         self.parse_fail("fn a(){ *; }")  # invalid unary usage
 
