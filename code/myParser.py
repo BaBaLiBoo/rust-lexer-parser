@@ -104,20 +104,39 @@ class Parser:
             return {"type": "LetStmt", "decl": decl}
 
         if self.match(TokenKind.KW_IF):
-            cond = self.parse_expression()
-            then_block = self.parse_block()
-            else_branch = None
-            if self.match(TokenKind.KW_ELSE):
-                if self.match(TokenKind.KW_IF):
-                    else_branch = {"type": "ElseIf", "stmt": self.parse_statement_after_if()}
-                else:
-                    else_branch = self.parse_block()
-            return {"type": "IfStmt", "cond": cond, "then": then_block, "else": else_branch}
+            return self.parse_if_stmt()
 
         if self.match(TokenKind.KW_WHILE):
             cond = self.parse_expression()
             body = self.parse_block()
             return {"type": "WhileStmt", "cond": cond, "body": body}
+
+        if self.match(TokenKind.KW_LOOP):
+            body = self.parse_block()
+            return {"type": "LoopStmt", "body": body}
+
+        if self.match(TokenKind.KW_FOR):
+            var_name = self.expect(TokenKind.IDENTIFIER, "Expected loop variable after 'for'")
+            self.expect(TokenKind.KW_IN, "Expected 'in' after loop variable in for statement")
+            start = self.parse_expression()
+            self.expect(TokenKind.DOT_DOT, "Expected '..' in for range")
+            end = self.parse_expression()
+            body = self.parse_block()
+            return {
+                "type": "ForStmt",
+                "var": var_name.lexeme,
+                "start": start,
+                "end": end,
+                "body": body,
+            }
+
+        if self.match(TokenKind.KW_BREAK):
+            self.expect(TokenKind.SEMI, "Expected ';' after break")
+            return {"type": "BreakStmt"}
+
+        if self.match(TokenKind.KW_CONTINUE):
+            self.expect(TokenKind.SEMI, "Expected ';' after continue")
+            return {"type": "ContinueStmt"}
 
         # assignment: ID = expr ;
         if self.check(TokenKind.IDENTIFIER) and self.check_next(TokenKind.ASSIGN):
@@ -132,13 +151,13 @@ class Parser:
         self.expect(TokenKind.SEMI, "Expected ';' after expression")
         return {"type": "ExprStmt", "expr": expr}
 
-    def parse_statement_after_if(self):
+    def parse_if_stmt(self):
         cond = self.parse_expression()
         then_block = self.parse_block()
         else_branch = None
         if self.match(TokenKind.KW_ELSE):
             if self.match(TokenKind.KW_IF):
-                else_branch = {"type": "ElseIf", "stmt": self.parse_statement_after_if()}
+                else_branch = self.parse_if_stmt()
             else:
                 else_branch = self.parse_block()
         return {"type": "IfStmt", "cond": cond, "then": then_block, "else": else_branch}

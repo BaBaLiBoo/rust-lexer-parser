@@ -50,10 +50,21 @@ class LexerTests(unittest.TestCase):
         )
 
     def test_keywords_vs_identifiers(self):
-        ks = self.kinds("if ifa while while_1")
+        ks = self.kinds("if ifa while while_1 else for in loop break continue")
         self.assertEqual(
             ks,
-            [TokenKind.KW_IF, TokenKind.IDENTIFIER, TokenKind.KW_WHILE, TokenKind.IDENTIFIER],
+            [
+                TokenKind.KW_IF,
+                TokenKind.IDENTIFIER,
+                TokenKind.KW_WHILE,
+                TokenKind.IDENTIFIER,
+                TokenKind.KW_ELSE,
+                TokenKind.KW_FOR,
+                TokenKind.KW_IN,
+                TokenKind.KW_LOOP,
+                TokenKind.KW_BREAK,
+                TokenKind.KW_CONTINUE,
+            ],
         )
 
     def test_mut_and_i32_keywords(self):
@@ -118,6 +129,55 @@ class ParserTests(unittest.TestCase):
         first_stmt = ast["functions"][0]["body"]["statements"][0]
         self.assertEqual(first_stmt["type"], "WhileStmt")
 
+    def test_if_else_parse(self):
+        ast = self.parse_ok("fn s(mut a:i32){ if a>0 { a=a-1; } else { a=a+1; } }")
+        stmt = ast["functions"][0]["body"]["statements"][0]
+        self.assertEqual(stmt["type"], "IfStmt")
+        self.assertEqual(stmt["else"]["type"], "Block")
+
+    def test_if_else_if_parse(self):
+        ast = self.parse_ok("fn s(mut a:i32){ if a>0 { a=1; } else if a<0 { a=2; } }")
+        stmt = ast["functions"][0]["body"]["statements"][0]
+        self.assertEqual(stmt["type"], "IfStmt")
+        self.assertEqual(stmt["else"]["type"], "IfStmt")
+
+    def test_chained_else_if_else_parse(self):
+        ast = self.parse_ok(
+            "fn s(mut a:i32){ if a>0 { a=1; } else if a<0 { a=2; } else if a==0 { a=3; } else { a=4; } }"
+        )
+        stmt = ast["functions"][0]["body"]["statements"][0]
+        self.assertEqual(stmt["type"], "IfStmt")
+        self.assertEqual(stmt["else"]["type"], "IfStmt")
+        self.assertEqual(stmt["else"]["else"]["type"], "IfStmt")
+        self.assertEqual(stmt["else"]["else"]["else"]["type"], "Block")
+
+    def test_loop_break_parse(self):
+        ast = self.parse_ok("fn s(){ loop { break; } }")
+        stmt = ast["functions"][0]["body"]["statements"][0]
+        self.assertEqual(stmt["type"], "LoopStmt")
+        inner = stmt["body"]["statements"][0]
+        self.assertEqual(inner["type"], "BreakStmt")
+
+    def test_while_continue_parse(self):
+        ast = self.parse_ok("fn s(mut n:i32){ while n>0 { continue; } }")
+        stmt = ast["functions"][0]["body"]["statements"][0]
+        self.assertEqual(stmt["type"], "WhileStmt")
+        inner = stmt["body"]["statements"][0]
+        self.assertEqual(inner["type"], "ContinueStmt")
+
+    def test_for_range_parse(self):
+        ast = self.parse_ok("fn s(){ for i in 0..10 { } }")
+        stmt = ast["functions"][0]["body"]["statements"][0]
+        self.assertEqual(stmt["type"], "ForStmt")
+        self.assertEqual(stmt["var"], "i")
+
+    def test_for_range_with_break_parse(self):
+        ast = self.parse_ok("fn s(){ for i in 0..10 { if i>5 { break; } } }")
+        stmt = ast["functions"][0]["body"]["statements"][0]
+        self.assertEqual(stmt["type"], "ForStmt")
+        nested_if = stmt["body"]["statements"][0]
+        self.assertEqual(nested_if["type"], "IfStmt")
+
     def test_precedence(self):
         self.parse_ok("fn p(){ 1+2*3; (1+2)*3; a+b<c; foo(1,2+3); }")
 
@@ -133,6 +193,12 @@ class ParserTests(unittest.TestCase):
         self.parse_fail("fn a(){ if 1 return 1; }")  # if without block
         self.parse_fail("fn a(){ while 1 return 1; }")  # while without block
         self.parse_fail("fn a(){ return +; }")  # syntax error after return
+        self.parse_fail("fn a(){ else { return; } }")  # else without if
+        self.parse_fail("fn a(){ for i 0..10 { } }")  # for missing in
+        self.parse_fail("fn a(){ for i in 0 10 { } }")  # for missing ..
+        self.parse_fail("fn a(){ loop ; }")  # loop without block
+        self.parse_fail("fn a(){ break }")  # break without semicolon
+        self.parse_fail("fn a(){ continue }")  # continue without semicolon
 
 
 if __name__ == "__main__":

@@ -18,7 +18,7 @@
 - 注释：单行 `//`、块注释 `/* ... */`
 - 最长匹配策略（例如优先识别 `>=`，不是 `>` + `=`）
 
-## 3. 支持的最低语法规则
+## 3. 支持的语法规则（含本阶段扩展）
 
 - `Program -> FunctionDecl*`
 - 函数声明：`fn ID (params?) (-> i32)? block`
@@ -29,7 +29,11 @@
   - `let mut ID [:i32] [=expr] ;`
   - 赋值 `ID = expr;`
   - `if expr { ... } [else ...]`
+  - `if expr { ... } else if expr { ... }`（支持链式 `else if` 与最终 `else`）
   - `while expr { ... }`
+  - `loop { ... }`
+  - `for ID in expr .. expr { ... }`（至少覆盖 `for i in 0..10 { ... }`）
+  - `break;` / `continue;`（语句形式）
   - 表达式语句（含函数调用）
 - 表达式优先级：
   - 比较：`< <= > >= == !=`
@@ -97,7 +101,7 @@ python code/main.py --mode parse /tmp/invalid.rsx
 PARSE ERROR: Expected expression at line 1, col 18
 ```
 
-## 6. 作业要求符合性对照表（最低强制）
+## 6. 作业要求符合性对照表（最低强制 + 本阶段增量）
 
 > 仅列最低强制规则：`0.1 0.2 0.3 1.1 1.2 1.3 1.4 1.5 2.0 2.1 2.2 3.1 3.2 3.3 3.4 3.5 4.1 5.0 5.1`。
 
@@ -119,9 +123,19 @@ PARSE ERROR: Expected expression at line 1, col 18
 | 3.3 | ✅ | `code/myParser.py::parse_additive` | `ParserTests.test_required_programs` (`program_3_3`) |
 | 3.4 | ✅ | `code/myParser.py::parse_multiplicative` | `ParserTests.test_required_programs` (`program_3_4`) |
 | 3.5 | ✅ | `code/myParser.py::parse_primary`（函数调用） | `ParserTests.test_required_programs` (`program_3_5__1`, `program_3_5__2`)、`ParserTests.test_precedence` |
-| 4.1 | ✅ | `code/myParser.py::parse_statement`、`parse_statement_after_if`（`if/else if/else`） | `ParserTests.test_required_programs` (`program_4_1`) |
+| 4.1 | ✅ | `code/myParser.py::parse_statement`、`parse_if_stmt`（`if/else if/else`） | `ParserTests.test_required_programs` (`program_4_1`) |
 | 5.0（循环语句类别） | ✅ | `code/myParser.py::parse_statement`（`while` 分支，循环语句） | `ParserTests.test_loop_statement_while` |
 | 5.1 | ✅ | `code/myParser.py::parse_statement`（`while`）+ `parse_statement`（循环体内赋值） | `ParserTests.test_required_programs` (`program_5_1`) |
+
+### 6.1 本阶段额外支持规则（非最低强制）
+
+| 扩展规则 | 是否支持 | 实际支持代码位置 | 实际测试用例 |
+|---|---|---|---|
+| 4.2（`if ... else ...`） | ✅ | `code/myParser.py::parse_if_stmt` | `ParserTests.test_if_else_parse` |
+| 4.3（`if ... else if ...` 链） | ✅ | `code/myParser.py::parse_if_stmt`（`else` 分支递归为 `IfStmt`） | `ParserTests.test_if_else_if_parse`、`ParserTests.test_chained_else_if_else_parse` |
+| 5.2（`for ID in expr..expr {}`） | ✅ | `code/myParser.py::parse_statement`（`KW_FOR` 分支） | `ParserTests.test_for_range_parse`、`ParserTests.test_for_range_with_break_parse` |
+| 5.3（`loop {}`） | ✅ | `code/myParser.py::parse_statement`（`KW_LOOP` 分支） | `ParserTests.test_loop_break_parse` |
+| 5.4（`break;` / `continue;`） | ✅ | `code/myParser.py::parse_statement`（`KW_BREAK` / `KW_CONTINUE` 分支） | `ParserTests.test_loop_break_parse`、`ParserTests.test_while_continue_parse` |
 
 ## 7. 额外覆盖（验收补强）
 
@@ -129,6 +143,9 @@ PARSE ERROR: Expected expression at line 1, col 18
 - 比较运算全覆盖：`< <= > >= == !=`。
 - 优先级与调用覆盖：`1+2*3`、`(1+2)*3`、`a+b<c`、`foo(1,2+3)`。
 - 负向用例覆盖：缺右括号、缺分号、非法 token、表达式不完整、`if/while` 后缺语句块、`return` 后语法错误。
+- 选择语句扩展覆盖：`if ... else ...`、`if ... else if ...`、链式 `else if ... else ...`。
+- 循环语句扩展覆盖：`loop { ... }`、`for i in 0..10 { ... }`。
+- 循环控制语句覆盖：`break;`、`continue;` 以及对应缺失分号的负向用例。
 
 ## 8. 验收结论（submission-ready）
 
