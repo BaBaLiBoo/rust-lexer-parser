@@ -39,7 +39,21 @@
   - 比较：`< <= > >= == !=`
   - 加减：`+ -`
   - 乘除：`* /`
-  - 原子：整数、标识符、括号、函数调用
+  - 一元：`&expr`、`*expr`
+  - 后缀：函数调用 `foo(...)`、索引 `arr[0]`
+  - 原子：整数、标识符、括号分组、数组字面量、元组字面量
+
+### 3.1 本阶段新增语法（高阶扩展）
+
+- 引用表达式：`&expr`（如 `&a`、`foo(&a)`）
+- 解引用表达式：`*expr`（如 `*p`、`*p+1`）
+- 数组字面量：`[]`、`[1]`、`[1,2,3]`
+- 索引表达式：`arr[0]`（支持嵌入调用参数，如 `foo([1,2], arr[0])`）
+- 元组字面量：`(1,2)`、`(a,b+1)`、嵌套元组（如 `((1,2),(3,4))`）
+- 分组与元组区分：`(a)` 视为分组表达式，`(a,b)` 视为元组字面量
+
+当前限制（明确说明）：
+- 暂不支持单元素元组语法 `(expr,)`（会报语法错误）。
 
 ## 4. 从仓库根目录运行
 
@@ -80,6 +94,18 @@ fn program_5_1(mut n:i32){
   while n>0 {
     n=n-1;
   }
+}
+```
+
+新增示例（引用/数组/元组）：
+
+```rs
+fn feature_demo(mut a:i32, mut p:i32, mut arr:i32){
+  foo(&a);
+  *p+1;
+  [1,2,3];
+  arr[0];
+  (a, arr[0]+1);
 }
 ```
 
@@ -136,6 +162,10 @@ PARSE ERROR: Expected expression at line 1, col 18
 | 5.2（`for ID in expr..expr {}`） | ✅ | `code/myParser.py::parse_statement`（`KW_FOR` 分支） | `ParserTests.test_for_range_parse`、`ParserTests.test_for_range_with_break_parse` |
 | 5.3（`loop {}`） | ✅ | `code/myParser.py::parse_statement`（`KW_LOOP` 分支） | `ParserTests.test_loop_break_parse` |
 | 5.4（`break;` / `continue;`） | ✅ | `code/myParser.py::parse_statement`（`KW_BREAK` / `KW_CONTINUE` 分支） | `ParserTests.test_loop_break_parse`、`ParserTests.test_while_continue_parse` |
+| 6.1（引用 `&expr`） | ✅ | `code/myParser.py::parse_unary` | `ParserTests.test_reference_unary_expr` |
+| 6.2（解引用 `*expr`） | ✅ | `code/myParser.py::parse_unary` | `ParserTests.test_dereference_unary_expr` |
+| 6.3（数组字面量 / 索引） | ✅ | `code/myParser.py::parse_primary`（`ArrayLiteral`）、`parse_postfix`（`IndexExpr`） | `ParserTests.test_array_literal_and_index_expr` |
+| 6.4（元组字面量） | ✅ | `code/myParser.py::parse_primary`（`TupleLiteral`） | `ParserTests.test_tuple_literal_and_grouped_distinction` |
 
 ## 7. 额外覆盖（验收补强）
 
