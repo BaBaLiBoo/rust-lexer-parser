@@ -1,4 +1,10 @@
+import sys
 import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from myLexer import Lexer
 from myParser import ParseError, Parser
@@ -74,34 +80,41 @@ class ParserTests(unittest.TestCase):
             "fn program_1_3() { return ; }",
             "fn program_1_4(mut a:i32) { }",
             "fn program_1_5() -> i32 { return 1; }",
+            "fn program_2_0() { let mut a:i32 = 1; }",
             "fn program_2_1() { let mut a; let mut b:i32; }",
             "fn program_2_2(mut a:i32) { a=32; }",
             "fn program_3_1__1() { 0; (1); ((2)); (((3))); }",
             "fn program_3_1__2(mut a:i32) { a; (a); ((a)); (((a))); }",
-            "fn program_3_2() { 1<2; 3>4; }",
+            "fn program_3_2() { 1<2; 3<=4; 5>6; 7>=8; 9==10; 11!=12; }",
             "fn program_3_3() { 1+2; 3-4; }",
             "fn program_3_4() { 1*2; 3/4; }",
             "fn program_3_5__1() { }",
             "fn program_3_5__2() { program_3_5__1(); }",
             "fn program_4_1(a:i32) -> i32 { if a>0 { return 1; } }",
+            "fn program_5_0(a:i32,b:i32) -> i32 { return a+b; }",
             "fn program_5_1(mut n:i32) { while n>0 { n=n-1; } }",
         ]
         for p in programs:
             self.parse_ok(p)
 
+    def test_comparison_operators_parse_success(self):
+        self.parse_ok("fn cmp(){ 1<2; 1<=2; 2>1; 2>=1; 1==1; 1!=2; }")
+
     def test_precedence(self):
         self.parse_ok("fn p(){ 1+2*3; (1+2)*3; a+b<c; foo(1,2+3); }")
 
     def test_invalid_cases(self):
-        self.parse_fail("fn a( { }")
-        self.parse_fail("fn a(){ return 1 }")
+        self.parse_fail("fn a( { }")  # missing right parenthesis
+        self.parse_fail("fn a(){ return 1 }")  # missing semicolon
+
         # illegal token
         tks, errs = Lexer().tokenize("fn a(){ @; }")
         self.assertTrue(errs)
-        self.parse_fail("fn a(){ 1+; }")
-        self.parse_fail("fn a(){ if 1 return 1; }")
-        self.parse_fail("fn a(){ while 1 return 1; }")
-        self.parse_fail("fn a(){ return +; }")
+
+        self.parse_fail("fn a(){ 1+; }")  # incomplete expression
+        self.parse_fail("fn a(){ if 1 return 1; }")  # if without block
+        self.parse_fail("fn a(){ while 1 return 1; }")  # while without block
+        self.parse_fail("fn a(){ return +; }")  # syntax error after return
 
 
 if __name__ == "__main__":
