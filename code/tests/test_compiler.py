@@ -181,6 +181,39 @@ class ParserTests(unittest.TestCase):
     def test_precedence(self):
         self.parse_ok("fn p(){ 1+2*3; (1+2)*3; a+b<c; foo(1,2+3); }")
 
+    def test_reference_unary_expr(self):
+        ast = self.parse_ok("fn p(mut a:i32){ &a; foo(&a); }")
+        ref_expr = ast["functions"][0]["body"]["statements"][0]["expr"]
+        self.assertEqual(ref_expr["type"], "Unary")
+        self.assertEqual(ref_expr["op"], "&")
+
+    def test_dereference_unary_expr(self):
+        ast = self.parse_ok("fn p(mut p:i32){ *p + 1; }")
+        expr = ast["functions"][0]["body"]["statements"][0]["expr"]
+        self.assertEqual(expr["type"], "Binary")
+        self.assertEqual(expr["left"]["type"], "Unary")
+        self.assertEqual(expr["left"]["op"], "*")
+
+    def test_array_literal_and_index_expr(self):
+        ast = self.parse_ok("fn p(mut arr:i32){ []; [1,2,3]; arr[0]; foo([1,2], arr[0]); }")
+        stmts = ast["functions"][0]["body"]["statements"]
+        self.assertEqual(stmts[0]["expr"]["type"], "ArrayLiteral")
+        self.assertEqual(stmts[0]["expr"]["elements"], [])
+        self.assertEqual(stmts[1]["expr"]["type"], "ArrayLiteral")
+        self.assertEqual(len(stmts[1]["expr"]["elements"]), 3)
+        self.assertEqual(stmts[2]["expr"]["type"], "IndexExpr")
+        self.assertEqual(stmts[3]["expr"]["type"], "Call")
+        self.assertEqual(stmts[3]["expr"]["args"][0]["type"], "ArrayLiteral")
+        self.assertEqual(stmts[3]["expr"]["args"][1]["type"], "IndexExpr")
+
+    def test_tuple_literal_and_grouped_distinction(self):
+        ast = self.parse_ok("fn p(mut a:i32, mut b:i32){ (a); (1,2); (a,b+1); ((1,2), (3,4)); }")
+        stmts = ast["functions"][0]["body"]["statements"]
+        self.assertEqual(stmts[0]["expr"]["type"], "Grouped")
+        self.assertEqual(stmts[1]["expr"]["type"], "TupleLiteral")
+        self.assertEqual(stmts[2]["expr"]["type"], "TupleLiteral")
+        self.assertEqual(stmts[3]["expr"]["type"], "TupleLiteral")
+
     def test_invalid_cases(self):
         self.parse_fail("fn a( { }")  # missing right parenthesis
         self.parse_fail("fn a(){ return 1 }")  # missing semicolon
@@ -199,6 +232,10 @@ class ParserTests(unittest.TestCase):
         self.parse_fail("fn a(){ loop ; }")  # loop without block
         self.parse_fail("fn a(){ break }")  # break without semicolon
         self.parse_fail("fn a(){ continue }")  # continue without semicolon
+        self.parse_fail("fn a(){ [1,2; }")  # missing ]
+        self.parse_fail("fn a(){ arr[]; }")  # malformed indexing
+        self.parse_fail("fn a(){ (1,); }")  # single-element tuple unsupported
+        self.parse_fail("fn a(){ *; }")  # invalid unary usage
 
 
 if __name__ == "__main__":

@@ -176,7 +176,7 @@ class Parser:
             init = self.parse_expression()
         return {"type": "VarDecl", "mut": True, "name": name.lexeme, "ty": ty, "init": init}
 
-    # expression -> comparison -> additive -> multiplicative -> primary
+    # expression -> comparison -> additive -> multiplicative -> unary -> postfix -> primary
     def parse_expression(self):
         return self.parse_comparison()
 
@@ -199,18 +199,23 @@ class Parser:
         return expr
 
     def parse_multiplicative(self):
-        expr = self.parse_primary()
+        expr = self.parse_unary()
         while self.match_any(TokenKind.STAR, TokenKind.SLASH):
             op = self.previous().kind.value
-            right = self.parse_primary()
+            right = self.parse_unary()
             expr = {"type": "Binary", "op": op, "left": expr, "right": right}
         return expr
 
-    def parse_primary(self):
-        if self.match(TokenKind.INTEGER):
-            return {"type": "IntLiteral", "value": int(self.previous().lexeme)}
-        if self.match(TokenKind.IDENTIFIER):
-            ident = self.previous()
+    def parse_unary(self):
+        if self.match(TokenKind.AMP):
+            return {"type": "Unary", "op": "&", "expr": self.parse_unary()}
+        if self.match(TokenKind.STAR):
+            return {"type": "Unary", "op": "*", "expr": self.parse_unary()}
+        return self.parse_postfix()
+
+    def parse_postfix(self):
+        expr = self.parse_primary()
+        while True:
             if self.match(TokenKind.LPAREN):
                 args = []
                 if not self.check(TokenKind.RPAREN):
@@ -218,10 +223,50 @@ class Parser:
                     while self.match(TokenKind.COMMA):
                         args.append(self.parse_expression())
                 self.expect(TokenKind.RPAREN, "Expected ')' after call arguments")
-                return {"type": "Call", "callee": ident.lexeme, "args": args}
-            return {"type": "Identifier", "name": ident.lexeme}
+                if expr.get("type") != "Identifier":
+                    tk = self.previous()
+                    raise ParseError("Call target must be an identifier", tk.line, tk.col)
+                expr = {"type": "Call", "callee": expr["name"], "args": args}
+                continue
+
+            if self.match(TokenKind.LBRACKET):
+                index_expr = self.parse_expression()
+                self.expect(TokenKind.RBRACKET, "Expected ']' after index expression")
+                expr = {"type": "IndexExpr", "target": expr, "index": index_expr}
+                continue
+
+            break
+        return expr
+
+    def parse_primary(self):
+        if self.match(TokenKind.INTEGER):
+            return {"type": "IntLiteral", "value": int(self.previous().lexeme)}
+        if self.match(TokenKind.IDENTIFIER):
+            return {"type": "Identifier", "name": self.previous().lexeme}
+        if self.match(TokenKind.LBRACKET):
+            items = []
+            if not self.check(TokenKind.RBRACKET):
+                items.append(self.parse_expression())
+                while self.match(TokenKind.COMMA):
+                    items.append(self.parse_expression())
+            self.expect(TokenKind.RBRACKET, "Expected ']' after array literal")
+            return {"type": "ArrayLiteral", "elements": items}
         if self.match(TokenKind.LPAREN):
             expr = self.parse_expression()
+            if self.match(TokenKind.COMMA):
+                items = [expr]
+                if self.check(TokenKind.RPAREN):
+                    tk = self.peek()
+                    raise ParseError("Single-element tuple '(expr,)' is not supported", tk.line, tk.col)
+                items.append(self.parse_expression())
+                while self.match(TokenKind.COMMA):
+                    if self.check(TokenKind.RPAREN):
+                        tk = self.peek()
+                        raise ParseError("Trailing comma in tuple is not supported", tk.line, tk.col)
+                    items.append(self.parse_expression())
+                self.expect(TokenKind.RPAREN, "Expected ')' after tuple expression")
+                return {"type": "TupleLiteral", "elements": items}
+
             self.expect(TokenKind.RPAREN, "Expected ')' after expression")
             return {"type": "Grouped", "expr": expr}
 
