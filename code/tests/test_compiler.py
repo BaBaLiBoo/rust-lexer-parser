@@ -56,6 +56,13 @@ class LexerTests(unittest.TestCase):
             [TokenKind.KW_IF, TokenKind.IDENTIFIER, TokenKind.KW_WHILE, TokenKind.IDENTIFIER],
         )
 
+    def test_mut_and_i32_keywords(self):
+        ks = self.kinds("mut value:i32")
+        self.assertEqual(
+            ks,
+            [TokenKind.KW_MUT, TokenKind.IDENTIFIER, TokenKind.COLON, TokenKind.KW_I32],
+        )
+
 
 class ParserTests(unittest.TestCase):
     def parse_ok(self, src: str):
@@ -99,6 +106,17 @@ class ParserTests(unittest.TestCase):
 
     def test_comparison_operators_parse_success(self):
         self.parse_ok("fn cmp(){ 1<2; 1<=2; 2>1; 2>=1; 1==1; 1!=2; }")
+
+    def test_identifier_as_lvalue_assignment(self):
+        ast = self.parse_ok("fn set(mut a:i32){ a=1; }")
+        first_stmt = ast["functions"][0]["body"]["statements"][0]
+        self.assertEqual(first_stmt["type"], "AssignStmt")
+        self.assertEqual(first_stmt["target"], "a")
+
+    def test_loop_statement_while(self):
+        ast = self.parse_ok("fn loop_min(mut n:i32){ while n>0 { n=n-1; } }")
+        first_stmt = ast["functions"][0]["body"]["statements"][0]
+        self.assertEqual(first_stmt["type"], "WhileStmt")
 
     def test_precedence(self):
         self.parse_ok("fn p(){ 1+2*3; (1+2)*3; a+b<c; foo(1,2+3); }")
