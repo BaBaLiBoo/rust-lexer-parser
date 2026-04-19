@@ -1,0 +1,108 @@
+import unittest
+
+from myLexer import Lexer
+from myParser import ParseError, Parser
+from tokenType import TokenKind
+
+
+class LexerTests(unittest.TestCase):
+    def setUp(self):
+        self.lexer = Lexer()
+
+    def kinds(self, src: str):
+        tks, errs = self.lexer.tokenize(src)
+        self.assertFalse(errs)
+        return [t.kind for t in tks[:-1]]
+
+    def test_if123_identifier(self):
+        ks = self.kinds("if123")
+        self.assertEqual(ks, [TokenKind.IDENTIFIER])
+
+    def test_if_equal_number(self):
+        ks = self.kinds("if=123")
+        self.assertEqual(ks, [TokenKind.KW_IF, TokenKind.ASSIGN, TokenKind.INTEGER])
+
+    def test_multi_char_ops(self):
+        ks = self.kinds("== >= <= != -> ..")
+        self.assertEqual(
+            ks,
+            [TokenKind.EQ, TokenKind.GE, TokenKind.LE, TokenKind.NE, TokenKind.ARROW, TokenKind.DOT_DOT],
+        )
+
+    def test_comments_and_whitespace(self):
+        ks = self.kinds("// one\n  let /*two*/ mut a:i32;")
+        self.assertEqual(
+            ks,
+            [
+                TokenKind.KW_LET,
+                TokenKind.KW_MUT,
+                TokenKind.IDENTIFIER,
+                TokenKind.COLON,
+                TokenKind.KW_I32,
+                TokenKind.SEMI,
+            ],
+        )
+
+    def test_keywords_vs_identifiers(self):
+        ks = self.kinds("if ifa while while_1")
+        self.assertEqual(
+            ks,
+            [TokenKind.KW_IF, TokenKind.IDENTIFIER, TokenKind.KW_WHILE, TokenKind.IDENTIFIER],
+        )
+
+
+class ParserTests(unittest.TestCase):
+    def parse_ok(self, src: str):
+        lexer = Lexer()
+        tokens, errs = lexer.tokenize(src)
+        self.assertFalse(errs)
+        parser = Parser()
+        return parser.parse(tokens)
+
+    def parse_fail(self, src: str):
+        lexer = Lexer()
+        tokens, errs = lexer.tokenize(src)
+        self.assertFalse(errs)
+        parser = Parser()
+        with self.assertRaises(ParseError):
+            parser.parse(tokens)
+
+    def test_required_programs(self):
+        programs = [
+            "fn program_1_1() { }",
+            "fn program_1_2() { ;;;;;; }",
+            "fn program_1_3() { return ; }",
+            "fn program_1_4(mut a:i32) { }",
+            "fn program_1_5() -> i32 { return 1; }",
+            "fn program_2_1() { let mut a; let mut b:i32; }",
+            "fn program_2_2(mut a:i32) { a=32; }",
+            "fn program_3_1__1() { 0; (1); ((2)); (((3))); }",
+            "fn program_3_1__2(mut a:i32) { a; (a); ((a)); (((a))); }",
+            "fn program_3_2() { 1<2; 3>4; }",
+            "fn program_3_3() { 1+2; 3-4; }",
+            "fn program_3_4() { 1*2; 3/4; }",
+            "fn program_3_5__1() { }",
+            "fn program_3_5__2() { program_3_5__1(); }",
+            "fn program_4_1(a:i32) -> i32 { if a>0 { return 1; } }",
+            "fn program_5_1(mut n:i32) { while n>0 { n=n-1; } }",
+        ]
+        for p in programs:
+            self.parse_ok(p)
+
+    def test_precedence(self):
+        self.parse_ok("fn p(){ 1+2*3; (1+2)*3; a+b<c; foo(1,2+3); }")
+
+    def test_invalid_cases(self):
+        self.parse_fail("fn a( { }")
+        self.parse_fail("fn a(){ return 1 }")
+        # illegal token
+        tks, errs = Lexer().tokenize("fn a(){ @; }")
+        self.assertTrue(errs)
+        self.parse_fail("fn a(){ 1+; }")
+        self.parse_fail("fn a(){ if 1 return 1; }")
+        self.parse_fail("fn a(){ while 1 return 1; }")
+        self.parse_fail("fn a(){ return +; }")
+
+
+if __name__ == "__main__":
+    unittest.main()
